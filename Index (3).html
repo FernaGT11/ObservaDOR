@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Escala de Notas para Docentes</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #4a7c59;
+            --primary-dark: #3a6247;
+            --primary-soft: #e8f2eb;
+
+            --bg: #f7faf8;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --border-soft: #eef2f0;
+
+            --apro-bg: #eff6ff;
+            --apro-border: #bfdbfe;
+            --apro-text: #1d4ed8;
+
+            --repro-bg: #fef2f2;
+            --repro-border: #fee2e2;
+            --repro-text: #dc2626;
+
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgb(74 124 89 / 0.08), 0 2px 4px -2px rgb(74 124 89 / 0.06);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body { overflow-x: hidden; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        header {
+            max-width: 1400px;
+            margin: 0 auto 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        header h1 { font-size: 1.75rem; font-weight: 700; color: var(--primary); line-height: 1.2; letter-spacing: -0.01em; }
+        header p { color: var(--text-light); font-size: 0.95rem; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 10px rgb(74 124 89 / 0.25); }
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 1.5px solid var(--primary);
+        }
+        .btn-secondary:hover { background: var(--primary-soft); transform: translateY(-1px); }
+        .btn-secondary:active { transform: translateY(0); }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--repro-text);
+            border: 1px solid var(--repro-text);
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+        .btn-danger:hover { background: var(--repro-text); color: white; }
+
+        #blocks-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(640px, 1fr));
+            gap: 24px;
+        }
+
+        .block {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            gap: 12px;
+        }
+
+        .block-header-fields {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field-row { display: flex; gap: 8px; }
+
+        .block-name,
+        .block-curso,
+        .block-asignatura,
+        .block-docente {
+            min-width: 0;
+            font-family: inherit;
+            color: var(--text);
+            border: 1.5px solid var(--border);
+            background: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .block-name { flex: 2 1 60%; font-size: 1.05rem; font-weight: 600; }
+        .block-curso { flex: 1 1 35%; font-size: 0.95rem; font-weight: 500; }
+        .block-asignatura { flex: 1 1 50%; font-size: 0.9rem; font-weight: 500; }
+        .block-docente { flex: 1 1 50%; font-size: 0.9rem; font-weight: 500; }
+
+        .block-name:hover,
+        .block-curso:hover,
+        .block-asignatura:hover,
+        .block-docente:hover { border-color: #cbd5e1; }
+
+        .block-name:focus,
+        .block-curso:focus,
+        .block-asignatura:focus,
+        .block-docente:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgb(74 124 89 / 0.12);
+        }
+
+        .block-name::placeholder,
+        .block-curso::placeholder,
+        .block-asignatura::placeholder,
+        .block-docente::placeholder { color: #94a3b8; font-weight: 500; }
+
+        .params-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+            gap: 12px;
+        }
+
+        .param-group { display: flex; flex-direction: column; gap: 4px; }
+
+        .param-group label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .param-group input {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        .param-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgb(74 124 89 / 0.1);
+        }
+
+        .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ===== Tabla por décadas ===== */
+        .grades-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .grade-row {
+            display: grid;
+            grid-template-columns: 58px repeat(10, minmax(0, 1fr));
+            gap: 4px;
+            align-items: stretch;
+        }
+
+        /* Etiqueta de rango: solo texto, sin fondo ni borde */
+        .grade-row-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--primary);
+            background: transparent;
+            padding: 4px 2px;
+            text-align: center;
+            line-height: 1.1;
+            letter-spacing: 0.2px;
+        }
+
+        .grade-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5px 3px;
+            border-radius: 7px;
+            background: #f1f5f9;
+            border: 1px solid transparent;
+            transition: transform 0.15s, border-color 0.15s;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .grade-cell:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+        }
+
+        .grade-cell.empty {
+            background: transparent;
+            border: 1px dashed rgba(226, 232, 240, 0.7);
+            pointer-events: none;
+        }
+        .grade-cell.empty:hover {
+            transform: none;
+            border-color: rgba(226, 232, 240, 0.7);
+        }
+
+        .grade-cell .p {
+            font-size: 0.68rem;
+            color: var(--text-light);
+            font-weight: 600;
+            line-height: 1.1;
+            white-space: nowrap;
+        }
+
+        .grade-cell .p::before { content: "P "; opacity: 0.6; }
+
+        .grade-cell .n {
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.15;
+            color: var(--repro-text);
+        }
+
+        .grade-cell.aprobado { background: var(--apro-bg); border-color: var(--apro-border); }
+        .grade-cell.aprobado .n { color: var(--apro-text); }
+
+        .grade-cell.reprobado { background: var(--repro-bg); border-color: var(--repro-border); }
+        .grade-cell.reprobado .n { color: var(--repro-text); }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+            grid-column: 1 / -1;
+        }
+        .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.4; }
+
+        @media (max-width: 1024px) {
+            body { padding: 20px; }
+            #blocks-container { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 14px; }
+
+            header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 14px;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+            header h1 { font-size: 1.35rem; }
+            header p { font-size: 0.85rem; }
+
+            header .btn-primary { width: 100%; padding: 12px; }
+
+            .block { padding: 16px; gap: 16px; border-radius: 10px; }
+
+            .block-header { flex-direction: column; gap: 10px; }
+            .block-header-fields { width: 100%; }
+            .field-row { flex-direction: column; gap: 8px; }
+            .block-name, .block-curso, .block-asignatura, .block-docente { width: 100%; padding: 10px 12px; }
+            .block-name { font-size: 1rem; }
+            .block-curso { font-size: 0.9rem; }
+            .block-asignatura { font-size: 0.9rem; }
+            .block-docente { font-size: 0.9rem; }
+            .block-header .btn-danger { width: 100%; }
+
+            .params-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .param-group input { padding: 10px; font-size: 0.95rem; }
+
+            .actions { flex-direction: column; }
+            .actions .btn { width: 100%; padding: 12px; }
+
+            .section-title { font-size: 0.75rem; }
+
+            .grade-row {
+                grid-template-columns: 46px repeat(10, minmax(0, 1fr));
+                gap: 3px;
+            }
+            .grade-row-label { font-size: 0.55rem; padding: 3px 1px; }
+            .grade-cell { padding: 4px 1px; border-radius: 5px; }
+            .grade-cell .p { font-size: 0.58rem; }
+            .grade-cell .n { font-size: 0.78rem; }
+
+            .chart-container { height: 240px; }
+        }
+
+        @media (max-width: 480px) {
+            .grade-cell .p::before { content: ""; }
+            .grade-row { grid-template-columns: 42px repeat(10, minmax(0, 1fr)); gap: 2px; }
+            .grade-row-label { font-size: 0.5rem; padding: 2px 1px; }
+            .grade-cell .p { font-size: 0.55rem; }
+            .grade-cell .n { font-size: 0.75rem; }
+        }
+
+        @media (max-width: 360px) {
+            .params-grid { grid-template-columns: 1fr; }
+            .grade-row { grid-template-columns: 38px repeat(10, minmax(0, 1fr)); gap: 2px; }
+            .grade-row-label { font-size: 0.46rem; padding: 2px 0; }
+            .grade-cell { padding: 3px 0; border-radius: 4px; }
+            .grade-cell .p { font-size: 0.5rem; }
+            .grade-cell .n { font-size: 0.68rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>📊 Escala de Notas para Docentes</h1>
+        <p>Calcula notas, nombra cada evaluación y descarga el PDF</p>
+    </div>
+    <button class="btn btn-primary" onclick="addBlock()">➕ Agregar Evaluación</button>
+</header>
+
+<div id="blocks-container"></div>
+
+<template id="block-template">
+    <div class="block">
+        <div class="block-header">
+            <div class="block-header-fields">
+                <div class="field-row">
+                    <input type="text" class="block-name" placeholder="Nombre de evaluación" maxlength="80">
+                    <input type="text" class="block-curso" placeholder="Curso" maxlength="40">
+                </div>
+                <div class="field-row">
+                    <input type="text" class="block-asignatura" placeholder="Asignatura" maxlength="60">
+                    <input type="text" class="block-docente" placeholder="Nombre del docente" maxlength="80">
+                </div>
+            </div>
+            <button class="btn btn-danger" onclick="removeBlock(this)">Eliminar</button>
+        </div>
+
+        <div class="params-grid">
+            <div class="param-group">
+                <label>Nota mínima</label>
+                <input type="text" class="p-nmin" value="1,0" inputmode="decimal" maxlength="4">
+            </div>
+            <div class="param-group">
+                <label>Nota máxima</label>
+                <input type="text" class="p-nmax" value="7,0" inputmode="decimal" maxlength="4">
+            </div>
+            <div class="param-group">
+                <label>Nota aprobación</label>
+                <input type="text" class="p-napr" value="4,0" inputmode="decimal" maxlength="4">
+            </div>
+            <div class="param-group">
+                <label>Exigencia (%)</label>
+                <input type="text" class="p-exig" value="60" inputmode="decimal" maxlength="5">
+            </div>
+            <div class="param-group">
+                <label>Puntaje mínimo</label>
+                <input type="text" class="p-pmin" value="0" inputmode="numeric" maxlength="6">
+            </div>
+            <div class="param-group">
+                <label>Puntaje máximo</label>
+                <input type="text" class="p-pmax" value="100" inputmode="numeric" maxlength="6">
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="calculateBlock(this)">🔄 Calcular y Graficar</button>
+            <button class="btn btn-secondary" onclick="downloadPDF(this)">📄 Descargar PDF</button>
+        </div>
+
+        <div>
+            <div class="section-title">Tabla de notas · P = Puntaje / N = Nota</div>
+            <div class="grades-grid"></div>
+        </div>
+
+        <div>
+            <div class="section-title">Curva de conversión</div>
+            <div class="chart-container">
+                <canvas></canvas>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    let blockCounter = 0;
+
+    const DEFAULT_EVAL_NAME = 'Nombre de evaluación';
+    const COLS_GRID = 10;
+
+    const COLOR_APRO_BAR     = 'rgba(37, 99, 235, 0.78)';
+    const COLOR_APRO_BORDER  = '#2563eb';
+    const COLOR_APRO_POINT   = '#1d4ed8';
+    const COLOR_REPRO_BAR    = 'rgba(220, 38, 38, 0.75)';
+    const COLOR_REPRO_BORDER = '#dc2626';
+    const COLOR_REPRO_POINT  = '#b91c1c';
+
+    const PDF_PRIMARY       = [74, 124, 89];
+    const PDF_APRO_FILL     = [239, 246, 255];
+    const PDF_APRO_BORDER   = [191, 219, 254];
+    const PDF_APRO_TEXT     = [29, 78, 216];
+    const PDF_REPRO_FILL    = [254, 242, 242];
+    const PDF_REPRO_BORDER  = [254, 202, 202];
+    const PDF_REPRO_TEXT    = [220, 38, 38];
+
+    // ===== Helpers de coma/punto =====
+
+    /** Convierte "1,5" o "1.5" a número. */
+    function parseDecimal(str) {
+        if (str === undefined || str === null) return NaN;
+        const cleaned = String(str).trim().replace(',', '.');
+        return parseFloat(cleaned);
+    }
+
+    /** Convierte un número a string con coma decimal. "7.0" → "7,0" */
+    function formatNota(n) {
+        return Number(n).toFixed(1).replace('.', ',');
+    }
+
+    /** Normaliza el input al salir: si escribió punto, lo deja como coma (para consistencia). */
+    function normalizeDecimalInput(input) {
+        const raw = input.value.trim().replace(',', '.');
+        const num = parseFloat(raw);
+        if (!isNaN(num)) {
+            // Si el usuario dejó 1 decimal, respetarlo; si no, dejarlo como está
+            const str = raw.includes('.') ? num.toString().replace('.', ',') : input.value.trim().replace('.', ',');
+            input.value = str;
+        }
+    }
+
+    function addBlock() {
+        const container = document.getElementById('blocks-container');
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState) emptyState.remove();
+
+        blockCounter++;
+        const template = document.getElementById('block-template');
+        const clone = template.content.cloneNode(true);
+
+        const block = clone.querySelector('.block');
+        block.dataset.id = blockCounter;
+
+        block.querySelector('.block-name').value = '';
+        block.querySelector('.block-curso').value = '';
+        block.querySelector('.block-asignatura').value = '';
+        block.querySelector('.block-docente').value = '';
+
+        container.appendChild(clone);
+
+        const newBlock = container.lastElementChild;
+
+        // Normalizar inputs decimales al salir (para que punto → coma)
+        newBlock.querySelectorAll('.p-nmin, .p-nmax, .p-napr').forEach(inp => {
+            inp.addEventListener('blur', () => normalizeDecimalInput(inp));
+        });
+
+        calculateBlock(newBlock.querySelector('.btn-primary'));
+        return newBlock;
+    }
+
+    function removeBlock(btn) {
+        const block = btn.closest('.block');
+        block.remove();
+
+        const container = document.getElementById('blocks-container');
+        if (container.querySelectorAll('.block').length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" id="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                    </svg>
+                    <p>No hay evaluaciones. Haz clic en "Agregar Evaluación" para comenzar.</p>
+                </div>
+            `;
+        }
+    }
+
+    function roundChilean(value) {
+        const truncated = Math.floor(value * 100) / 100;
+        const cents = Math.round((truncated - Math.floor(truncated)) * 100);
+        const tenths = Math.floor(truncated * 10) / 10;
+        if (cents >= 5) return Math.round((tenths + 0.1) * 10) / 10;
+        return Math.round(tenths * 10) / 10;
+    }
+
+    function calculateGrade(p, nmin, nmax, napr, exig, pmax, pmin) {
+        if (p <= pmin) return nmin;
+
+        const e = exig / 100;
+        const threshold = e * pmax;
+
+        if (threshold <= pmin) {
+            const nota = napr + (nmax - napr) * (p - pmin) / (pmax - pmin);
+            return Math.min(nmax, Math.max(nmin, roundChilean(nota)));
+        }
+        if (threshold >= pmax) {
+            const nota = nmin + (napr - nmin) * (p - pmin) / (pmax - pmin);
+            return Math.min(nmax, Math.max(nmin, roundChilean(nota)));
+        }
+
+        let nota;
+        if (p < threshold) {
+            nota = nmin + (napr - nmin) * (p - pmin) / (threshold - pmin);
+        } else {
+            nota = napr + (nmax - napr) * (p - threshold) / (pmax - threshold);
+        }
+        return Math.min(nmax, Math.max(nmin, roundChilean(nota)));
+    }
+
+    function readParams(block) {
+        const pminRaw = parseDecimal(block.querySelector('.p-pmin').value);
+        const pmaxRaw = parseDecimal(block.querySelector('.p-pmax').value);
+        return {
+            nmin: parseDecimal(block.querySelector('.p-nmin').value),
+            nmax: parseDecimal(block.querySelector('.p-nmax').value),
+            napr: parseDecimal(block.querySelector('.p-napr').value),
+            exig: parseDecimal(block.querySelector('.p-exig').value),
+            pmin: isNaN(pminRaw) ? 0 : Math.max(0, Math.floor(pminRaw)),
+            pmax: isNaN(pmaxRaw) ? 0 : Math.floor(pmaxRaw)
+        };
+    }
+
+    function buildGrades(nmin, nmax, napr, exig, pmax, pmin) {
+        const cells = [];
+        const range = pmax - pmin;
+        const step = range <= 100 ? 1 : Math.ceil(range / 100);
+        for (let p = pmin; p <= pmax; p += step) {
+            cells.push({ p, nota: calculateGrade(p, nmin, nmax, napr, exig, pmax, pmin) });
+        }
+        if (cells[cells.length - 1].p !== pmax) {
+            cells.push({ p: pmax, nota: calculateGrade(pmax, nmin, nmax, napr, exig, pmax, pmin) });
+        }
+        return cells;
+    }
+
+    function calculateBlock(btn) {
+        const block = btn.closest('.block');
+        const { nmin, nmax, napr, exig, pmin, pmax } = readParams(block);
+        if (!pmax || pmax < 1 || pmin >= pmax || isNaN(nmin) || isNaN(nmax) || isNaN(napr) || isNaN(exig)) {
+            block.querySelector('.grades-grid').innerHTML = '';
+            if (block._chart) { block._chart.destroy(); block._chart = null; }
+            return;
+        }
+
+        const cells = buildGrades(nmin, nmax, napr, exig, pmax, pmin);
+        const cellMap = new Map();
+        cells.forEach(c => cellMap.set(c.p, c));
+
+        const gradesGrid = block.querySelector('.grades-grid');
+        gradesGrid.innerHTML = '';
+
+        const firstDecade = Math.floor(pmin / 10);
+        const lastDecade = Math.floor(pmax / 10);
+
+        for (let d = firstDecade; d <= lastDecade; d++) {
+            const row = document.createElement('div');
+            row.className = 'grade-row';
+
+            const rangeStart = Math.max(d * 10, pmin);
+            const rangeEnd = Math.min(d * 10 + 9, pmax);
+            const label = document.createElement('span');
+            label.className = 'grade-row-label';
+            label.textContent = rangeStart === rangeEnd
+                ? `${rangeEnd} pts`
+                : `${rangeStart}-${rangeEnd} pts`;
+            row.appendChild(label);
+
+            for (let u = 0; u <= 9; u++) {
+                const p = d * 10 + u;
+
+                if (p < pmin || p > pmax || !cellMap.has(p)) {
+                    const empty = document.createElement('span');
+                    empty.className = 'grade-cell empty';
+                    row.appendChild(empty);
+                    continue;
+                }
+
+                const c = cellMap.get(p);
+                const cell = document.createElement('div');
+                cell.className = 'grade-cell ' + (c.nota >= napr ? 'aprobado' : 'reprobado');
+                cell.innerHTML = `<span class="p">${c.p}</span><span class="n">${formatNota(c.nota)}</span>`;
+                cell.title = `Puntaje ${c.p} → Nota ${formatNota(c.nota)}`;
+                row.appendChild(cell);
+            }
+
+            gradesGrid.appendChild(row);
+        }
+
+        drawChart(block, cells, nmin, nmax, napr);
+    }
+
+    function drawChart(block, cells, nmin, nmax, napr) {
+        const canvas = block.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+        if (block._chart) block._chart.destroy();
+
+        const labels = cells.map(c => c.p);
+        const grades = cells.map(c => c.nota);
+
+        const barColors     = grades.map(g => g >= napr ? COLOR_APRO_BORDER  : COLOR_REPRO_BORDER);
+        const barFillColors = grades.map(g => g >= napr ? COLOR_APRO_BAR     : COLOR_REPRO_BAR);
+        const pointColors   = grades.map(g => g >= napr ? COLOR_APRO_POINT   : COLOR_REPRO_POINT);
+
+        const pointRadius = labels.length > 80 ? 1.5 : (labels.length > 40 ? 2 : 3);
+        const yMax = nmax + (nmax - nmin) * 0.08;
+
+        block._chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: 'Nota',
+                        data: grades,
+                        backgroundColor: barFillColors,
+                        borderColor: barColors,
+                        borderWidth: 1,
+                        borderRadius: 1,
+                        barPercentage: 0.5,
+                        categoryPercentage: 1.0,
+                        maxBarThickness: 3,
+                        base: nmin,
+                        order: 1
+                    },
+                    {
+                        type: 'line',
+                        label: 'Punto',
+                        data: grades,
+                        showLine: false,
+                        pointRadius: pointRadius,
+                        pointHoverRadius: pointRadius + 2,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1,
+                        fill: false,
+                        order: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        filter: (item) => item.dataset.type === 'line',
+                        callbacks: {
+                            title: (items) => `Puntaje: ${items[0].label}`,
+                            label: (item) => {
+                                const nota = item.parsed.y;
+                                const estado = nota >= napr ? 'Aprobado' : 'Reprobado';
+                                return `Nota: ${formatNota(nota)} (${estado})`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Puntaje', font: { size: 11 } },
+                        grid: { display: false },
+                        ticks: { autoSkip: true, maxTicksLimit: 20, font: { size: 10 } }
+                    },
+                    y: {
+                        min: nmin,
+                        max: yMax,
+                        title: { display: true, text: 'Nota', font: { size: 11 } },
+                        ticks: {
+                            stepSize: 0.5,
+                            callback: (value) => formatNota(value)
+                        },
+                        grid: { color: 'rgba(74, 124, 89, 0.06)' }
+                    }
+                }
+            }
+        });
+    }
+
+    // ========== PDF ==========
+    function getChartImageWithWhiteBg(canvas) {
+        const temp = document.createElement('canvas');
+        temp.width = canvas.width;
+        temp.height = canvas.height;
+        const ctx = temp.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, temp.width, temp.height);
+        ctx.drawImage(canvas, 0, 0);
+        return temp.toDataURL('image/png');
+    }
+
+    function downloadPDF(btn) {
+        const block = btn.closest('.block');
+        const { nmin, nmax, napr, exig, pmin, pmax } = readParams(block);
+        if (!pmax || pmax < 1 || pmin >= pmax || isNaN(nmin) || isNaN(nmax) || isNaN(napr) || isNaN(exig)) {
+            alert('Revisa los parámetros ingresados.');
+            return;
+        }
+        if (!window.jspdf || !window.jspdf.jsPDF) { alert('No se pudo cargar la librería PDF.'); return; }
+
+        if (!block._chart) calculateBlock(block.querySelector('.btn-primary'));
+
+        const rawName = (block.querySelector('.block-name').value || '').trim();
+        const rawCurso = (block.querySelector('.block-curso').value || '').trim();
+        const rawAsignatura = (block.querySelector('.block-asignatura').value || '').trim();
+        const rawDocente = (block.querySelector('.block-docente').value || '').trim();
+        const evalName = rawName || DEFAULT_EVAL_NAME;
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageW = 210, pageH = 297;
+        const margin = 15;
+        const contentW = pageW - margin * 2;
+
+        const headerX = margin, headerY = 12, headerW = contentW, headerH = 40;
+
+        doc.setDrawColor(...PDF_PRIMARY);
+        doc.setLineWidth(0.8);
+        doc.roundedRect(headerX, headerY, headerW, headerH, 2.5, 2.5, 'S');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(...PDF_PRIMARY);
+        doc.text('ESCALA DE NOTAS', pageW / 2, headerY + 6, { align: 'center' });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.setTextColor(30, 41, 59);
+
+        const composedTitle = rawCurso ? `${evalName}  —  ${rawCurso}` : evalName;
+        const titleLines = doc.splitTextToSize(composedTitle, headerW - 12);
+        const titleLine = titleLines[0] + (titleLines.length > 1 ? '…' : '');
+        doc.text(titleLine, pageW / 2, headerY + 15, { align: 'center' });
+
+        const infoParts = [];
+        if (rawAsignatura) infoParts.push(`Asignatura: ${rawAsignatura}`);
+        if (rawDocente) infoParts.push(`Docente: ${rawDocente}`);
+        if (infoParts.length > 0) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text(infoParts.join('   ·   '), pageW / 2, headerY + 24, { align: 'center' });
+        }
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')}`, pageW / 2, headerY + 34, { align: 'center' });
+
+        let y = headerY + headerH + 12;
+        doc.setTextColor(30, 41, 59);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('Parámetros de entrada', margin, y);
+        y += 7;
+
+        const params = [
+            { label: 'NOTA MÍNIMA', value: formatNota(nmin) },
+            { label: 'NOTA MÁXIMA', value: formatNota(nmax) },
+            { label: 'APROBACIÓN', value: formatNota(napr) },
+            { label: 'EXIGENCIA', value: `${Math.round(exig)}%` },
+            { label: 'P. MÍNIMO', value: String(pmin) },
+            { label: 'P. MÁXIMO', value: String(pmax) }
+        ];
+        const gap = 2.5;
+        const boxW = (contentW - gap * (params.length - 1)) / params.length;
+        const boxH = 17;
+
+        params.forEach((p, i) => {
+            const x = margin + i * (boxW + gap);
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(x, y, boxW, boxH, 2, 2, 'FD');
+
+            doc.setFontSize(6);
+            doc.setTextColor(100, 116, 139);
+            doc.setFont('helvetica', 'bold');
+            doc.text(p.label, x + boxW / 2, y + 6, { align: 'center' });
+
+            doc.setFontSize(11.5);
+            doc.setTextColor(30, 41, 59);
+            doc.text(p.value, x + boxW / 2, y + 13.5, { align: 'center' });
+        });
+
+        y += boxH + 12;
+
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Tabla de notas', margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text('P = Puntaje  ·  N = Nota  ·  una decena por fila', margin + 32, y);
+        y += 5;
+
+        const cells = buildGrades(nmin, nmax, napr, exig, pmax, pmin);
+        const cellMap = new Map();
+        cells.forEach(c => cellMap.set(c.p, c));
+
+        const labelW = 14;
+        const cols = COLS_GRID;
+        const cellW = (contentW - labelW) / cols;
+        const cellH = 8.5;
+        const gridStartY = y;
+
+        const firstDecade = Math.floor(pmin / 10);
+        const lastDecade = Math.floor(pmax / 10);
+
+        doc.setLineWidth(0.3);
+
+        let rowIndex = 0;
+        for (let d = firstDecade; d <= lastDecade; d++) {
+            const cy = gridStartY + rowIndex * cellH;
+
+            // Etiqueta de rango: solo texto, sin rectángulo de fondo
+            const rangeStart = Math.max(d * 10, pmin);
+            const rangeEnd = Math.min(d * 10 + 9, pmax);
+            const labelText = rangeStart === rangeEnd
+                ? `${rangeEnd} pts`
+                : `${rangeStart}-${rangeEnd} pts`;
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6.8);
+            doc.setTextColor(...PDF_PRIMARY);
+            doc.text(labelText, margin + (labelW - 0.6) / 2, cy + cellH / 2 + 1.6, { align: 'center' });
+
+            for (let u = 0; u <= 9; u++) {
+                const p = d * 10 + u;
+                const x = margin + labelW + u * cellW;
+
+                if (p < pmin || p > pmax || !cellMap.has(p)) continue;
+
+                const c = cellMap.get(p);
+                if (c.nota >= napr) {
+                    doc.setFillColor(...PDF_APRO_FILL);
+                    doc.setDrawColor(...PDF_APRO_BORDER);
+                } else {
+                    doc.setFillColor(...PDF_REPRO_FILL);
+                    doc.setDrawColor(...PDF_REPRO_BORDER);
+                }
+                doc.rect(x, cy, cellW - 0.6, cellH - 0.6, 'FD');
+
+                doc.setFontSize(5);
+                doc.setTextColor(100, 116, 139);
+                doc.setFont('helvetica', 'normal');
+                doc.text('P' + c.p, x + (cellW - 0.6) / 2, cy + 3.3, { align: 'center' });
+
+                doc.setFontSize(8.5);
+                doc.setFont('helvetica', 'bold');
+                if (c.nota >= napr) doc.setTextColor(...PDF_APRO_TEXT);
+                else doc.setTextColor(...PDF_REPRO_TEXT);
+                doc.text(formatNota(c.nota), x + (cellW - 0.6) / 2, cy + 7.2, { align: 'center' });
+            }
+
+            rowIndex++;
+        }
+
+        y = gridStartY + rowIndex * cellH + 12;
+
+        if (y > 215) {
+            doc.addPage();
+            y = 20;
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Curva de conversión', margin, y);
+        y += 5;
+
+        const canvas = block.querySelector('canvas');
+        const chartImg = getChartImageWithWhiteBg(canvas);
+        const aspect = canvas.width / canvas.height;
+        const chartW = contentW;
+        const chartH = Math.min(chartW / aspect, 90);
+
+        doc.addImage(chartImg, 'PNG', margin, y, chartW, chartH);
+
+        doc.setFontSize(7.5);
+        doc.setTextColor(148, 163, 184);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Generado con Escala de Notas para Docentes', pageW / 2, pageH - 8, { align: 'center' });
+
+        const slugify = (s) => s
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+
+        const parts = [slugify(evalName)];
+        if (rawAsignatura) parts.push(slugify(rawAsignatura));
+        if (rawCurso) parts.push(slugify(rawCurso));
+        const safeName = parts.filter(Boolean).join('-') || `eval-${block.dataset.id}`;
+
+        doc.save(`escala-notas-${safeName}.pdf`);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        addBlock();
+    });
+</script>
+
+</body>
+</html>
